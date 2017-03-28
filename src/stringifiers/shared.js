@@ -103,24 +103,6 @@ export function handleOrderBy(orderBy) {
   return orderColumns
 }
 
-// find out what the limit, offset, order by parts should be from the relay connection args if we're paginating
-export function interpretForOffsetPaging(node, dialect) {
-  const { name } = dialect
-  if (node.args && node.args.last) {
-    throw new Error('Backward pagination not supported with offsets. Consider using keyset pagination instead')
-  }
-  let limit = [ 'mariadb', 'mysql', 'oracle' ].includes(name) ? '18446744073709551615' : 'ALL'
-  const orderColumns = handleOrderBy(node.orderBy)
-  let offset = 0
-  if (node.args && node.args.first) {
-    // we'll get one extra item (hence the +1). this is to determine if there is a next page or not
-    limit = parseInt(node.args.first) + 1
-    if (node.args.after) {
-      offset = cursorToOffset(node.args.after) + 1
-    }
-  }
-  return { limit, offset, orderColumns }
-}
 
 export function interpretForKeysetPaging(node, dialect) {
   const { name } = dialect
@@ -207,4 +189,3 @@ function _recursiveWhereJoin(columns, values, op, condition) {
   condition = `(${column} ${op} ${value} OR (${column} = ${value} AND ${condition}))`
   return _recursiveWhereJoin(columns, values, op, condition)
 }
-

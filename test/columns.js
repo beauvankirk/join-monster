@@ -1,6 +1,5 @@
 import test from 'ava'
 import { graphql } from 'graphql'
-import { toGlobalId } from 'graphql-relay'
 import schemaBasic from '../test-api/schema-basic/index'
 import { partial } from 'lodash'
 
@@ -51,18 +50,7 @@ test('get a field that has a resolver on top of the SQL column', async t => {
   })
 })
 
-test('get a globalID field', async t => {
-  const query = wrap('globalId')
-  const { data, errors } = await run(query)
-  t.is(errors, undefined)
-  t.deepEqual(data, {
-    users: [
-      { globalId: toGlobalId('User', 1) },
-      { globalId: toGlobalId('User', 2) },
-      { globalId: toGlobalId('User', 3) }
-    ]
-  })
-})
+
 
 test('get a field that depends on multiple sql columns', async t => {
   const query = wrap('fullName')
@@ -362,4 +350,3 @@ test('it should handle raw SQL expressions', async t => {
   t.is(errors, undefined)
   t.is(data.user.fullName.split(' ')[1].toUpperCase(), data.user.capitalizedLastName)
 })
-

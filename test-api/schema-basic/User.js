@@ -7,9 +7,6 @@ import {
   GraphQLBoolean
 } from 'graphql'
 
-import {
-  globalIdField
-} from 'graphql-relay'
 
 import Comment from './Comment'
 import Post from './Post'
@@ -39,11 +36,6 @@ const User = new GraphQLObjectType({
       type: GraphQLString,
       sqlColumn: 'id',
       resolve: user => toBase64(user.idEncoded)
-    },
-    globalId: {
-      description: 'The global ID for the Relay spec',
-      ...globalIdField('User'),
-      sqlDeps: [ 'id' ]
     },
     fullName: {
       description: 'A user\'s first and last name',
@@ -141,4 +133,4 @@ const User = new GraphQLObjectType({
   })
 })
 
-export default User 
+export default User

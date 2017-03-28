@@ -8,7 +8,6 @@ import koaStatic from 'koa-static'
 import cors from 'koa-cors'
 
 import schemaBasic from './schema-basic/index'
-import schemaRelay from './schema-paginated/index'
 
 const app = koa()
 const router = koaRouter()
@@ -34,17 +33,9 @@ router.post('/graphql', graphqlHTTP({
   }
 }))
 
-router.post('/graphql-relay', graphqlHTTP({
-  schema: schemaRelay,
-  formatError: e => {
-    console.error(e)
-    return e
-  }
-}))
 
 app.use(router.routes())
 // serve the custom build of GraphiQL
 app.use(koaStatic(path.join(__dirname, '../node_modules/graphsiql')))
 
 app.listen(3000, () => console.log('server listening at http://localhost:3000/graphql and http://localhost:3000/graphql-relay'))
-
