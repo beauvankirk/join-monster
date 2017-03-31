@@ -1,6 +1,5 @@
 import util from 'util'
 import { filter } from 'lodash'
-import { cursorToOffset } from 'graphql-relay'
 import { wrap, cursorToObj, maybeQuote } from '../util'
 
 export function joinPrefix(prefix) {

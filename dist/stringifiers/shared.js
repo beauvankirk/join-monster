@@ -21,8 +21,6 @@ var _util2 = _interopRequireDefault(_util);
 
 var _lodash = require('lodash');
 
-var _graphqlRelay = require('graphql-relay');
-
 var _util3 = require('../util');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
