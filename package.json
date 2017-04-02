@@ -1,10 +1,10 @@
 {
   "name": "join-monster",
-  "version": "1.2.1-beta.1",
+  "version": "1.2.1-beta.2",
   "description": "A GraphQL to SQL query execution layer for batch data fetching.",
   "main": "dist/index.js",
   "engines": {
-    "node": ">=6.0.0"
+    "node": ">=7.8.0"
   },
   "files": [
     "dist/"
@@ -70,7 +70,7 @@
   "dependencies": {
     "join-monster-graphql-tools-adapter": "^0.0.0",
     "generatorics": "^1.0.8",
-    "graphql-tools": "^0.10.1",
+    "graphql-tools": "^0.11.0",
     "nesthydrationjs": "0.4.0"
   },
   "devDependencies": {
@@ -87,10 +87,10 @@
     "jsdoc-to-markdown": "^3.0.0",
     "knex": "beauvankirk/knex#dev",
     "koa": "^2.2.0",
-    "koa-cors": "0.0.16",
-    "koa-custom-graphiql": "0.0.3",
+    "kcors": "latest",
+    "koa-custom-graphiql": "beauvankirk/koa-custom-graphiql#dev",
     "koa-graphql": "^0.6.2",
-    "koa-router": "^5.4.0",
+    "koa-router": "^7.1.1",
     "koa-static": "^3.0.0",
     "koa-logger": "^2.0.1",
     "nyc": "^10.2.0",

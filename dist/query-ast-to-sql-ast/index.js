@@ -24,7 +24,7 @@ var _util = require('../util');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-function queryASTToSqlAST(resolveInfo, options) {
+function queryASTToSqlAST(resolveInfo, options, context) {
   const namespace = new _aliasNamespace2.default(options.dialect === 'oracle' ? true : options.minify);
 
   const sqlAST = {};
@@ -35,7 +35,7 @@ function queryASTToSqlAST(resolveInfo, options) {
   const queryAST = fieldNodes[0];
 
   const parentType = resolveInfo.parentType;
-  getGraphQLType.call(resolveInfo, queryAST, parentType, sqlAST, namespace, 0, options);
+  getGraphQLType.call(resolveInfo, queryAST, parentType, sqlAST, namespace, 0, options, context);
 
   _assert2.default.equal(sqlAST.type, 'table', 'Must call joinMonster in a resolver on a field where the type is decorated with "sqlTable".');
 
@@ -44,7 +44,7 @@ function queryASTToSqlAST(resolveInfo, options) {
   return sqlAST;
 }
 
-function getGraphQLType(queryASTNode, parentTypeNode, sqlASTNode, namespace, depth, options) {
+function getGraphQLType(queryASTNode, parentTypeNode, sqlASTNode, namespace, depth, options, context) {
   const fieldName = queryASTNode.name.value;
 
   if (/^__/.test(fieldName)) {
@@ -88,7 +88,7 @@ function getGraphQLType(queryASTNode, parentTypeNode, sqlASTNode, namespace, dep
 
     if (field.sqlPaginate) {
       sqlASTNode.paginate = true;
-      getSortColumns(field, sqlASTNode);
+      getSortColumns(field, sqlASTNode, context);
     }
   } else {
     if (field.sqlPaginate) {
@@ -102,7 +102,7 @@ function getGraphQLType(queryASTNode, parentTypeNode, sqlASTNode, namespace, dep
     if (depth >= 1) {
       (0, _assert2.default)(field.sqlJoin || field.sqlBatch || field.junctionTable, `If an Object type maps to a SQL table and has a child which is another Object type that also maps to a SQL table, you must define "sqlJoin", "sqlBatch", or "junctionTable" on that field to tell joinMonster how to fetch it. Or you can ignore it with "jmIgnoreTable". Check the "${fieldName}" field on the "${parentTypeNode.name}" type.`);
     }
-    handleTable.call(this, sqlASTNode, queryASTNode, field, gqlType, namespace, grabMany, depth, options);
+    handleTable.call(this, sqlASTNode, queryASTNode, field, gqlType, namespace, grabMany, depth, options, context);
   } else if (field.sqlExpr) {
     sqlASTNode.type = 'expression';
     sqlASTNode.sqlExpr = field.sqlExpr;
@@ -121,16 +121,20 @@ function getGraphQLType(queryASTNode, parentTypeNode, sqlASTNode, namespace, dep
   }
 }
 
-function handleTable(sqlASTNode, queryASTNode, field, gqlType, namespace, grabMany, depth, options) {
+function handleTable(sqlASTNode, queryASTNode, field, gqlType, namespace, grabMany, depth, options, context) {
   const config = gqlType._typeConfig;
 
   sqlASTNode.type = 'table';
-  sqlASTNode.name = config.sqlTable;
+  let sqlTable = config.sqlTable;
+  if (typeof sqlTable === 'function') {
+    sqlTable = sqlTable(sqlASTNode.args || {}, context);
+  }
+  sqlASTNode.name = sqlTable;
 
   sqlASTNode.as = namespace.generate('table', field.name);
 
   if (field.orderBy && !sqlASTNode.orderBy) {
-    handleOrderBy(sqlASTNode, field);
+    handleOrderBy(sqlASTNode, field, context);
   }
 
   const children = sqlASTNode.children = [];
@@ -176,7 +180,7 @@ function handleTable(sqlASTNode, queryASTNode, field, gqlType, namespace, grabMa
   }
 
   if (!config.uniqueKey) {
-    throw new Error(`You must specify the "uniqueKey" on the GraphQLObjectType definition of ${config.sqlTable}`);
+    throw new Error(`You must specify the "uniqueKey" on the GraphQLObjectType definition of ${sqlTable}`);
   }
   children.push(keyToASTChild(config.uniqueKey, namespace));
 
@@ -195,20 +199,20 @@ function handleTable(sqlASTNode, queryASTNode, field, gqlType, namespace, grabMa
 
   if (queryASTNode.selectionSet) {
     if (gqlType.constructor.name === 'GraphQLUnionType' || gqlType.constructor.name === 'GraphQLInterfaceType') {
-      handleUnionSelections.call(this, children, queryASTNode.selectionSet.selections, gqlType, namespace, depth, options);
+      handleUnionSelections.call(this, children, queryASTNode.selectionSet.selections, gqlType, namespace, depth, options, context);
     } else {
-      handleSelections.call(this, children, queryASTNode.selectionSet.selections, gqlType, namespace, depth, options);
+      handleSelections.call(this, children, queryASTNode.selectionSet.selections, gqlType, namespace, depth, options, context);
     }
   }
 }
 
-function handleUnionSelections(children, selections, gqlType, namespace, depth, options) {
+function handleUnionSelections(children, selections, gqlType, namespace, depth, options, context) {
   for (let selection of selections) {
     switch (selection.kind) {
       case 'Field':
         const newNode = {};
         children.push(newNode);
-        getGraphQLType.call(this, selection, gqlType, newNode, namespace, depth + 1, options);
+        getGraphQLType.call(this, selection, gqlType, newNode, namespace, depth + 1, options, context);
         break;
 
       case 'InlineFragment':
@@ -217,7 +221,7 @@ function handleUnionSelections(children, selections, gqlType, namespace, depth, 
 
           const deferToType = this.schema._typeMap[selectionNameOfType];
           const handler = deferToType.constructor.name === 'GraphQLObjectType' ? handleSelections : handleUnionSelections;
-          handler.call(this, children, selection.selectionSet.selections, deferToType, namespace, depth, options);
+          handler.call(this, children, selection.selectionSet.selections, deferToType, namespace, depth, options, context);
         }
         break;
 
@@ -228,7 +232,7 @@ function handleUnionSelections(children, selections, gqlType, namespace, depth, 
           const fragmentNameOfType = fragment.typeCondition.name.value;
           const deferToType = this.schema._typeMap[fragmentNameOfType];
           const handler = deferToType.constructor.name === 'GraphQLObjectType' ? handleSelections : handleUnionSelections;
-          handler.call(this, children, fragment.selectionSet.selections, deferToType, namespace, depth, options);
+          handler.call(this, children, fragment.selectionSet.selections, deferToType, namespace, depth, options, context);
         }
         break;
       default:
@@ -237,13 +241,13 @@ function handleUnionSelections(children, selections, gqlType, namespace, depth, 
   }
 }
 
-function handleSelections(children, selections, gqlType, namespace, depth, options) {
+function handleSelections(children, selections, gqlType, namespace, depth, options, context) {
   for (let selection of selections) {
     switch (selection.kind) {
       case 'Field':
         const newNode = {};
         children.push(newNode);
-        getGraphQLType.call(this, selection, gqlType, newNode, namespace, depth + 1, options);
+        getGraphQLType.call(this, selection, gqlType, newNode, namespace, depth + 1, options, context);
         break;
 
       case 'InlineFragment':
@@ -252,7 +256,7 @@ function handleSelections(children, selections, gqlType, namespace, depth, optio
           const sameType = selectionNameOfType === gqlType.name;
           const interfaceType = (gqlType._interfaces || []).map(iface => iface.name).includes(selectionNameOfType);
           if (sameType || interfaceType) {
-            handleSelections.call(this, children, selection.selectionSet.selections, gqlType, namespace, depth, options);
+            handleSelections.call(this, children, selection.selectionSet.selections, gqlType, namespace, depth, options, context);
           }
         }
         break;
@@ -266,7 +270,7 @@ function handleSelections(children, selections, gqlType, namespace, depth, optio
           const sameType = fragmentNameOfType === gqlType.name;
           const interfaceType = gqlType._interfaces.map(iface => iface.name).indexOf(fragmentNameOfType) >= 0;
           if (sameType || interfaceType) {
-            handleSelections.call(this, children, fragment.selectionSet.selections, gqlType, namespace, depth, options);
+            handleSelections.call(this, children, fragment.selectionSet.selections, gqlType, namespace, depth, options, context);
           }
         }
         break;
@@ -402,23 +406,23 @@ function parseArgValue(value, variableValues) {
   }
 }
 
-function getSortColumns(field, sqlASTNode) {
+function getSortColumns(field, sqlASTNode, context) {
   if (field.sortKey) {
     if (typeof field.sortKey === 'function') {
-      sqlASTNode.sortKey = field.sortKey(sqlASTNode.args);
+      sqlASTNode.sortKey = field.sortKey(sqlASTNode.args, context);
     } else {
       sqlASTNode.sortKey = field.sortKey;
     }
   } else if (field.orderBy) {
-    handleOrderBy(sqlASTNode, field);
+    handleOrderBy(sqlASTNode, field, context);
   } else {
     throw new Error('"sortKey" or "orderBy" required if "sqlPaginate" is true');
   }
 }
 
-function handleOrderBy(sqlASTNode, field) {
+function handleOrderBy(sqlASTNode, field, context) {
   if (typeof field.orderBy === 'function') {
-    sqlASTNode.orderBy = field.orderBy(sqlASTNode.args || {});
+    sqlASTNode.orderBy = field.orderBy(sqlASTNode.args || {}, context);
   } else {
     sqlASTNode.orderBy = field.orderBy;
   }

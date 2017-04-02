@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", {
 
 let joinMonster = (() => {
   var _ref = _asyncToGenerator(function* (resolveInfo, context, dbCall, options = {}) {
-    const sqlAST = queryAST.queryASTToSqlAST(resolveInfo, options);
+    const sqlAST = queryAST.queryASTToSqlAST(resolveInfo, options, context);
     const { sql, shapeDefinition } = yield (0, _util.compileSqlAST)(sqlAST, context, options);
     if (!sql) return {};
 
